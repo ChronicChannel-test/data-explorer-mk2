@@ -1526,6 +1526,7 @@ function updateUrlFromChartState() {
 
       // Build query parameters
       const queryParts = [
+        'page=linechart',
         `pollutant_id=${encodeURIComponent(pollutantId)}`,
         `category_ids=${categoryIds.join(',')}`,
         `start_year=${encodeURIComponent(startYear)}`,
@@ -1533,7 +1534,10 @@ function updateUrlFromChartState() {
       ];
 
       const queryString = queryParts.join('&');
-      const nextUrl = `${window.location.pathname}?${queryString}`;
+      const basePath = window.NAEIUrlState?.getViewerBasePath
+        ? window.NAEIUrlState.getViewerBasePath(1)
+        : '/';
+      const nextUrl = `${basePath}?${queryString}`;
       try {
         window.history.replaceState({}, '', nextUrl);
       } catch (historyError) {
@@ -1592,7 +1596,7 @@ function buildLineChartViewMeta({
     })
     .filter(id => id !== null);
 
-  const queryParts = [];
+  const queryParts = ['page=linechart'];
   if (pollutantId) {
     queryParts.push(`pollutant_id=${encodeURIComponent(pollutantId)}`);
   }
@@ -1609,7 +1613,9 @@ function buildLineChartViewMeta({
   const normalizedQuery = queryParts.join('&');
   const queryString = normalizedQuery ? `?${normalizedQuery}` : null;
   const shareUrl = normalizedQuery
-    ? `${window.location.origin}${window.location.pathname}?${normalizedQuery}`
+    ? (window.NAEIUrlState?.buildShareUrl
+      ? window.NAEIUrlState.buildShareUrl(normalizedQuery)
+      : `${window.location.origin}${window.location.pathname}?${normalizedQuery}`)
     : window.location.href;
 
   return {

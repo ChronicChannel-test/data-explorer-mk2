@@ -3,6 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <title>UK Air Pollution/Emissions Line Chart</title>
+  <script>
+    (function canonicalizeLinePath() {
+      try {
+        var currentUrl = new URL(window.location.href);
+        var segments = currentUrl.pathname.split('/').filter(Boolean);
+        if (!segments.length) {
+          return;
+        }
+        var lastSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        var hasIndex = lastSegment === 'index.html';
+        if (hasIndex) {
+          segments.pop();
+        }
+        var chartSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (chartSegment !== 'linechart') {
+          return;
+        }
+
+        segments.pop();
+        var basePath = segments.length ? ('/' + segments.join('/') + '/') : '/';
+        var params = new URLSearchParams(currentUrl.search || '');
+        params.set('page', 'linechart');
+        var query = params.toString();
+        var canonicalUrl = basePath + (query ? ('?' + query) : '') + (currentUrl.hash || '');
+
+        if ((currentUrl.pathname + currentUrl.search + currentUrl.hash) === canonicalUrl) {
+          return;
+        }
+
+        window.history.replaceState({}, '', canonicalUrl);
+      } catch (error) {
+        console.warn('Unable to canonicalize line chart URL', error);
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" sizes="64x64" href="../SharedResources/images/favicon.png">
   <link rel="apple-touch-icon" href="../SharedResources/images/favicon.png">
   <link rel="preload" as="image" href="../SharedResources/images/No-Entry-Icon-200x200.svg">

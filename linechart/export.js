@@ -371,7 +371,7 @@ function generateShareUrl() {
   const endYear = endYearSelect ? endYearSelect.value : null;
   
   const params = new URLSearchParams();
-  params.set('chart', '2');
+  params.set('page', 'linechart');
   params.set('pollutant_id', pollutantData.id);
   const categoryIdList = categoryIds.join(',');
   params.set('category_ids', categoryIdList);

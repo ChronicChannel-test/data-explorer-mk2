@@ -3,6 +3,41 @@
 <head>
   <meta charset="utf-8">
   <title>Eco Replaces All | UK Air Pollution and Emissions Data Explorer</title>
+  <script>
+    (function canonicalizeEcoReplacesPath() {
+      try {
+        var currentUrl = new URL(window.location.href);
+        var segments = currentUrl.pathname.split('/').filter(Boolean);
+        if (!segments.length) {
+          return;
+        }
+        var lastSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        var hasIndex = lastSegment === 'index.html';
+        if (hasIndex) {
+          segments.pop();
+        }
+        var chartSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (chartSegment !== 'ecoreplacesall') {
+          return;
+        }
+
+        segments.pop();
+        var basePath = segments.length ? ('/' + segments.join('/') + '/') : '/';
+        var params = new URLSearchParams(currentUrl.search || '');
+        params.set('page', 'eco-replaces-all');
+        var query = params.toString();
+        var canonicalUrl = basePath + (query ? ('?' + query) : '') + (currentUrl.hash || '');
+
+        if ((currentUrl.pathname + currentUrl.search + currentUrl.hash) === canonicalUrl) {
+          return;
+        }
+
+        window.history.replaceState({}, '', canonicalUrl);
+      } catch (error) {
+        console.warn('Unable to canonicalize Eco Replaces URL', error);
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Eco Replaces All prototype experience for the UK Air Pollution and Emissions Data Explorer">
   <meta property="og:type" content="website">

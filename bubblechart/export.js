@@ -1259,7 +1259,7 @@ function showShareDialog() {
   });
 
   // Format: pollutant_id, category_ids, year (year at the end)
-  const query = `chart=1&pollutant_id=${chartData.pollutantId}&category_ids=${categoryIdsWithFlags.join(',')}&year=${chartData.year}`;
+  const query = `page=bubblechart&pollutant_id=${chartData.pollutantId}&category_ids=${categoryIdsWithFlags.join(',')}&year=${chartData.year}`;
   const shareUrl = resolveShareUrl(query);
   const displayShareUrl = formatShareUrlForDisplay(shareUrl) || shareUrl;
 
@@ -3039,4 +3039,3 @@ function drawCalculationBlock(ctx, { block, x, y, width, height, headerFont, lin
 function drawInclusionNote(ctx) {
   // legacy no-op retained for backward compatibility
 }
-

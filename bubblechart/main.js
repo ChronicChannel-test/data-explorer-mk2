@@ -1927,9 +1927,11 @@ function parseUrlParameters() {
   
   const params = new URLSearchParams(searchParams);
   
-  // Check if this is the active chart - only parse params if chart=1 (bubble chart)
+  // Check if this is the active chart - only parse params if it targets bubble chart
   const chartParam = params.get('chart');
-  if (chartParam && chartParam !== '1') {
+  const pageParam = (params.get('page') || '').toLowerCase();
+  const pageTargetsBubble = !pageParam || pageParam === 'bubblechart' || pageParam === 'bubble';
+  if ((chartParam && chartParam !== '1') || !pageTargetsBubble) {
     // Return empty params so defaults will be used
     return {
       pollutantName: null,
@@ -3984,25 +3986,31 @@ function updateURL() {
 
   // Build params array - use raw strings to avoid encoding commas
   const params = [
+    'page=bubblechart',
     `pollutant_id=${selectedPollutantId}`,
     `category_ids=${categoryIdsWithFlags.join(',')}`,  // Comma NOT encoded
     `year=${selectedYear}`
   ];
   
-  // Update iframe's own URL (for standalone use)
+  // Update URL using the dedicated root route (?page=bubblechart)
   const query = params.join('&');
-  const newURL = window.location.pathname + '?' + query;
+  const basePath = window.NAEIUrlState?.getViewerBasePath
+    ? window.NAEIUrlState.getViewerBasePath(1)
+    : '/';
+  const newURL = `${basePath}?${query}`;
   window.history.replaceState({}, '', newURL);
   
   // Send message to parent to update its URL (for embedded use)
-  // But ONLY if this is the active chart (chart=1 in parent URL)
+  // But ONLY if this is the active chart (bubble chart in parent URL)
   if (window.parent && window.parent !== window) {
     try {
       const parentParams = new URLSearchParams(window.parent.location.search);
       const chartParam = parentParams.get('chart');
-      
-      // Only send if chart=1 (bubble) or no chart param (default to bubble)
-      if (!chartParam || chartParam === '1') {
+      const pageParam = (parentParams.get('page') || '').toLowerCase();
+      const pageTargetsBubble = !pageParam || pageParam === 'bubblechart' || pageParam === 'bubble';
+
+      // Only send if parent currently targets bubble chart
+      if ((!chartParam || chartParam === '1') && pageTargetsBubble) {
         window.parent.postMessage({
           type: 'updateURL',
           params: params  // Send as array of raw strings

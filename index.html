@@ -40,23 +40,23 @@
         }
 
         var pageMap = {
-          'bubble': 'bubblechart',
-          'bubblechart': 'bubblechart',
-          'line': 'linechart',
-          'linechart': 'linechart',
-          'eco': 'EcoReplacesAll',
-          'eco-replaces': 'EcoReplacesAll',
-          'eco-replaces-all': 'EcoReplacesAll',
-          'ecodesign': 'EcoReplacesAll',
-          'ecodesign-replaces': 'EcoReplacesAll',
-          'ecodesignreplaces': 'EcoReplacesAll',
-          'ecoreplacesall': 'EcoReplacesAll',
-          'category-info': 'category-info',
-          'user-guide': 'user-guide'
+          'bubble': { folder: 'bubblechart', page: 'bubblechart', keepPageParam: true },
+          'bubblechart': { folder: 'bubblechart', page: 'bubblechart', keepPageParam: true },
+          'line': { folder: 'linechart', page: 'linechart', keepPageParam: true },
+          'linechart': { folder: 'linechart', page: 'linechart', keepPageParam: true },
+          'eco': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'eco-replaces': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'eco-replaces-all': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'ecodesign': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'ecodesign-replaces': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'ecodesignreplaces': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'ecoreplacesall': { folder: 'EcoReplacesAll', page: 'eco-replaces-all', keepPageParam: true },
+          'category-info': { folder: 'category-info', page: 'category-info', keepPageParam: false },
+          'user-guide': { folder: 'user-guide', page: 'user-guide', keepPageParam: false }
         };
 
-        var targetFolder = pageMap[rawPage];
-        if (!targetFolder) {
+        var targetConfig = pageMap[rawPage];
+        if (!targetConfig) {
           return;
         }
 
@@ -65,10 +65,14 @@
           ? pathname.replace(/[^/]*$/, '')
           : (pathname.endsWith('/') ? pathname : pathname + '/');
 
-        params.delete('page');
         params.delete('chart');
+        if (targetConfig.keepPageParam) {
+          params.set('page', targetConfig.page);
+        } else {
+          params.delete('page');
+        }
 
-        var targetUrl = new URL(basePath + targetFolder + '/index.html', currentUrl.origin);
+        var targetUrl = new URL(basePath + targetConfig.folder + '/', currentUrl.origin);
         var search = params.toString();
         targetUrl.search = search ? ('?' + search) : '';
         targetUrl.hash = currentUrl.hash || '';
