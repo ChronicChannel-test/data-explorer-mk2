@@ -3,6 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <title>UK Air Pollution/Emissions Line Chart</title>
+  <script>
+    (function redirectLinechartPathToShell() {
+      try {
+        var embedded = window.parent && window.parent !== window;
+        if (embedded) {
+          return;
+        }
+        var params = new URLSearchParams(window.location.search || '');
+        var target = new URL('../', window.location.href);
+        var forwarded = new URLSearchParams();
+        params.forEach(function (value, key) {
+          forwarded.append(key, value);
+        });
+        forwarded.set('page', 'linechart');
+        target.search = '?' + forwarded.toString();
+        target.hash = window.location.hash || '';
+        window.location.replace(target.toString());
+      } catch (error) {
+        console.warn('Unable to redirect linechart path to shell view', error);
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" sizes="64x64" href="../SharedResources/images/favicon.png">
   <link rel="apple-touch-icon" href="../SharedResources/images/favicon.png">
   <link rel="preload" as="image" href="../SharedResources/images/No-Entry-Icon-200x200.svg">
@@ -106,22 +128,6 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/charts/loader.js" data-google-charts-loader="true"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script>
-    (function loadStandaloneSidebar() {
-      try {
-        var embedded = window.parent && window.parent !== window;
-        if (embedded) {
-          return;
-        }
-        var script = document.createElement('script');
-        script.src = '../sidebar.js?v=v5-0-CIC-testdb';
-        script.defer = true;
-        document.head.appendChild(script);
-      } catch (error) {
-        console.warn('Unable to load sidebar script', error);
-      }
-    })();
-  </script>
 </head>
 
 <body data-page-slug="linechart">

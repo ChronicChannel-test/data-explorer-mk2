@@ -16,22 +16,26 @@
       children: [
         { label: 'Bubble Chart',       iconImg: 'Bubble-Chart-Icon.svg', href: '/data-explorer/bubblechart/' },
         { label: 'Line Chart',         iconImg: 'Line-Chart-Icon.svg', href: '/data-explorer/linechart/' },
-        { label: 'Ecodesign Replaces', iconImg: 'Stove Ecodesign 430x683.svg', href: '#' },
-        { label: 'Category Info',      icon: 'i', href: '/data-explorer/resources/' },
-        { label: 'User Guide',         icon: '?', href: '/data-explorer/user-guide/' },
+        { label: 'Ecodesign Replaces', iconImg: 'Stove Ecodesign 430x683.svg', href: '#', className: 'cic-nav-item--eco-replaces' },
+        { label: 'Category Info',      iconImg: 'Category Info - Icon.svg', href: '/data-explorer/resources/' },
+        { label: 'User Guide',         iconImg: 'user-guide.svg', href: '/data-explorer/user-guide/' },
       ],
     },
     {
-      id: 'resources',
-      label: 'Resources',
+      id: 'quick-links',
+      showLabel: false,
+      dividerBefore: true,
       children: [
-        { label: 'Resources', iconImg: 'chain-link-icon-grey.svg', href: '/data-explorer/resources/' },
+        {
+          label: 'YouTube',
+          iconImg: 'youtube-logo.svg',
+          labelImg: 'youtube-logo-Word.svg',
+          href: 'https://youtube.com/@chronicillnesschannel',
+          external: true,
+        },
+        { label: 'Resources', iconImg: 'chain-link-icon-grey.svg', href: '/resources/' },
+        { label: 'Contact', iconImg: 'Contacts-Email-icon-cic-web.svg', href: '/contact.html' },
       ],
-    },
-    {
-      id: 'contact',
-      label: 'Contact',
-      children: [],
     },
   ];
   const HOME_ITEM = {
@@ -46,6 +50,8 @@
   const COLLAPSED = 'collapsed';
   const MINI      = 'mini';
   const DRAWER    = 'drawer';
+  const HAMBURGER_ICON_OFF = '/sidebar-images/CIC-hamburger-button.svg';
+  const HAMBURGER_ICON_ON = '/sidebar-images/CIC%20Hamburger%20Button-SidebarOn.svg';
 
   let autoCollapseTimer = null;
   let pinnedOpenDesktop = false;
@@ -79,6 +85,15 @@
         setState(MINI);
       }
     }, 3000);
+  }
+
+  function updateHamburgerIcon(btn) {
+    const img = btn?.querySelector('img');
+    if (!img) return;
+    const mobileOpen = getBreakpoint() === 'mobile' && document.body.classList.contains('cic-drawer-open');
+    const shouldShowOn = pinnedOpenDesktop || mobileOpen;
+    const target = `${location.origin}${shouldShowOn ? HAMBURGER_ICON_ON : HAMBURGER_ICON_OFF}`;
+    if (img.src !== target) img.src = target;
   }
 
   // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -217,6 +232,12 @@
       margin-left: 0;
     }
 
+    .cic-section-divider {
+      height: 0;
+      border-top: 1px solid var(--cic-line);
+      margin: 10px 12px 8px;
+    }
+
     .cic-section-label {
       font-family: var(--cic-font);
       font-size: 20px;
@@ -268,7 +289,32 @@
       object-fit: contain;
       display: block;
     }
+    .cic-nav-icon-placeholder {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      border: 2px dashed var(--cic-ink-4);
+      border-radius: 10px;
+      display: inline-block;
+      opacity: 0.75;
+    }
+    .cic-nav-label-img {
+      display: block;
+      height: 16px;
+      width: auto;
+      max-width: 136px;
+      object-fit: contain;
+    }
     .cic-nav-label { overflow: hidden; text-overflow: ellipsis; }
+    .cic-nav-item--eco-replaces .cic-nav-label {
+      display: block;
+      width: 92px;
+      white-space: normal;
+      line-height: 1.15;
+      text-align: left;
+      overflow: visible;
+      text-overflow: clip;
+    }
 
     body[data-sidebar-state="mini"] .cic-nav-label { display: none; }
     body[data-sidebar-state="mini"] .cic-nav-item  { padding: 11px; justify-content: center; }
@@ -309,19 +355,30 @@
     const className = item.className ? ` ${item.className}` : '';
     const iconHtml = item.iconImg
       ? `<img class="cic-nav-icon-img" src="${location.origin}/sidebar-images/${item.iconImg}" alt="">`
-      : `<i class="cic-nav-icon">${item.icon}</i>`;
+      : item.iconPlaceholder
+        ? `<span class="cic-nav-icon-placeholder" aria-hidden="true"></span>`
+        : `<i class="cic-nav-icon">${item.icon}</i>`;
+    const labelHtml = item.labelImg
+      ? `<img class="cic-nav-label-img" src="${location.origin}/sidebar-images/${item.labelImg}" alt="${item.label}">`
+      : item.label;
+    const targetAttrs = item.external ? ' target="_blank" rel="noopener noreferrer"' : '';
     return `
-      <a class="cic-nav-item${className}${isActive ? ' active' : ''}" href="${href}">
+      <a class="cic-nav-item${className}${isActive ? ' active' : ''}" href="${href}"${targetAttrs}>
         ${iconHtml}
-        <span class="cic-nav-label">${item.label}</span>
+        <span class="cic-nav-label">${labelHtml}</span>
       </a>`;
   }
 
   function buildSection(section) {
     const childrenHtml = section.children.map(buildNavItem).join('');
+    const sectionLabel = section.showLabel === false
+      ? ''
+      : `<div class="cic-section-label">${section.label}</div>`;
+    const divider = section.dividerBefore ? '<div class="cic-section-divider" aria-hidden="true"></div>' : '';
     return `
       <div class="cic-nav-section">
-        <div class="cic-section-label">${section.label}</div>
+        ${divider}
+        ${sectionLabel}
         ${childrenHtml}
       </div>`;
   }
@@ -368,7 +425,7 @@
     const btn = document.createElement('button');
     btn.id = 'cic-hamburger';
     btn.setAttribute('aria-label', 'Toggle navigation');
-    btn.innerHTML = `<img src="${location.origin}/sidebar-images/CIC-hamburger-button.svg" alt="Menu">`;
+    btn.innerHTML = `<img src="${location.origin}${HAMBURGER_ICON_OFF}" alt="Menu">`;
 
     // Top-right home logo (hidden on homepage)
     const homeLogo = isHomePage() ? null : (() => {
@@ -402,6 +459,7 @@
     } else {
       setState(MINI);
     }
+    updateHamburgerIcon(btn);
 
     bindEvents(btn, overlay);
   }
@@ -423,11 +481,13 @@
           setState(EXPANDED);
         }
       }
+      updateHamburgerIcon(btn);
     });
 
     // Close drawer on overlay click
     overlay.addEventListener('click', () => {
       document.body.classList.remove('cic-drawer-open');
+      updateHamburgerIcon(btn);
     });
 
     // Left-edge hover re-expand (desktop)
@@ -469,6 +529,7 @@
       } else {
         setState(pinnedOpenDesktop ? EXPANDED : MINI);
       }
+      updateHamburgerIcon(btn);
     });
   }
 

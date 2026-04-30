@@ -16,4 +16,4 @@ Planning recommendations must account for this limit.
 
 ## Sidebar Hook Workflow
 - Sidebar logic should be edited once only in a single repo/file per task.
-- A git hook in `.git/hooks` propagates sidebar logic changes, so do not duplicate the same sidebar logic edits manually across repos.
+- The `.git/hooks/pre-commit` hook propagates sidebar logic changes to the other 2 repos that need them, so do not duplicate the same sidebar logic edits manually across repos.

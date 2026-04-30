@@ -263,22 +263,6 @@
       }
     }
   </style>
-  <script>
-    (function loadStandaloneSidebar() {
-      try {
-        var embedded = window.parent && window.parent !== window;
-        if (embedded) {
-          return;
-        }
-        var script = document.createElement('script');
-        script.src = '../sidebar.js?v=v5-0-CIC-testdb';
-        script.defer = true;
-        document.head.appendChild(script);
-      } catch (error) {
-        console.warn('Unable to load sidebar script', error);
-      }
-    })();
-  </script>
 </head>
 <body data-page-slug="user-guide">
   <div class="chart-shell user-guide-shell">
