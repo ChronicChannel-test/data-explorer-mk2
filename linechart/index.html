@@ -106,22 +106,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/charts/loader.js" data-google-charts-loader="true"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script>
-    (function loadStandaloneSidebar() {
-      try {
-        var embedded = window.parent && window.parent !== window;
-        if (embedded) {
-          return;
-        }
-        var script = document.createElement('script');
-        script.src = '../sidebar.js?v=v5-0-CIC-testdb';
-        script.defer = true;
-        document.head.appendChild(script);
-      } catch (error) {
-        console.warn('Unable to load sidebar script', error);
-      }
-    })();
-  </script>
+  <script src='../sidebar.js?v=v5-0-CIC-testdb' defer></script>
 </head>
 
 <body data-page-slug="linechart">

@@ -329,22 +329,7 @@
   <script src="../SharedResources/supabase-env.js?v=v5-0-CIC-testdb"></script>
   <script src="../SharedResources/supabase-config.js?v=v5-0-CIC-testdb"></script>
   <script src="../SharedResources/shared-data-loader.js?v=v5-0-CIC-testdb"></script>
-  <script>
-    (function loadStandaloneSidebar() {
-      try {
-        var embedded = window.parent && window.parent !== window;
-        if (embedded) {
-          return;
-        }
-        var script = document.createElement('script');
-        script.src = '../sidebar.js?v=v5-0-CIC-testdb';
-        script.defer = true;
-        document.head.appendChild(script);
-      } catch (error) {
-        console.warn('Unable to load sidebar script', error);
-      }
-    })();
-  </script>
+  <script src='../sidebar.js?v=v5-0-CIC-testdb' defer></script>
 </head>
 <body data-page-slug="category-info">
   <main class="chart-shell category-info-shell">

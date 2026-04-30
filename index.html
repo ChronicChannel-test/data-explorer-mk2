@@ -30,6 +30,65 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="preload" as="image" href="SharedResources/images/Stove%20Ecodesign%20430x683.svg">
   <script>
+    (function redirectLegacyPageRoutesToStandaloneViews() {
+      try {
+        var currentUrl = new URL(window.location.href);
+        var params = new URLSearchParams(currentUrl.search || '');
+        var rawPage = (params.get('page') || params.get('chart') || '').toLowerCase();
+        if (!rawPage) {
+          return;
+        }
+
+        var pageMap = {
+          'bubble': 'bubblechart',
+          'bubblechart': 'bubblechart',
+          'line': 'linechart',
+          'linechart': 'linechart',
+          'eco': 'EcoReplacesAll',
+          'eco-replaces': 'EcoReplacesAll',
+          'eco-replaces-all': 'EcoReplacesAll',
+          'ecodesign': 'EcoReplacesAll',
+          'ecodesign-replaces': 'EcoReplacesAll',
+          'ecodesignreplaces': 'EcoReplacesAll',
+          'ecoreplacesall': 'EcoReplacesAll',
+          'category-info': 'category-info',
+          'user-guide': 'user-guide'
+        };
+
+        var targetFolder = pageMap[rawPage];
+        if (!targetFolder) {
+          return;
+        }
+
+        var pathname = currentUrl.pathname || '/';
+        var basePath = pathname.endsWith('.html')
+          ? pathname.replace(/[^/]*$/, '')
+          : (pathname.endsWith('/') ? pathname : pathname + '/');
+
+        params.delete('page');
+        params.delete('chart');
+
+        var targetUrl = new URL(basePath + targetFolder + '/index.html', currentUrl.origin);
+        var search = params.toString();
+        targetUrl.search = search ? ('?' + search) : '';
+        targetUrl.hash = currentUrl.hash || '';
+
+        var isSamePath = targetUrl.pathname === currentUrl.pathname;
+        var isSameSearch = targetUrl.search === currentUrl.search;
+        var isSameHash = targetUrl.hash === currentUrl.hash;
+        if (isSamePath && isSameSearch && isSameHash) {
+          return;
+        }
+
+        window.location.replace(targetUrl.toString());
+      } catch (error) {
+        if (window && window.console && window.console.warn) {
+          window.console.warn('Unable to redirect legacy page route:', error);
+        }
+      }
+    })();
+  </script>
+  <script>
     (function primeScrollRestoration() {
       try {
         var params = new URLSearchParams(window.location.search || '');
