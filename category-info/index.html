@@ -3,6 +3,42 @@
 <head>
   <meta charset="utf-8">
   <title>UK Air Pollution/Emissions Data Explorer</title>
+  <script>
+    (function canonicalizeCategoryInfoPath() {
+      try {
+        var currentUrl = new URL(window.location.href);
+        var segments = currentUrl.pathname.split('/').filter(Boolean);
+        if (!segments.length) {
+          return;
+        }
+
+        var lastSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (lastSegment === 'index.html') {
+          segments.pop();
+        }
+
+        var pageSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (pageSegment !== 'category-info') {
+          return;
+        }
+
+        var canonicalPath = '/' + segments.join('/') + '/';
+        var params = new URLSearchParams(currentUrl.search || '');
+        params.delete('page');
+        params.delete('chart');
+        var query = params.toString();
+        var canonicalUrl = canonicalPath + (query ? ('?' + query) : '') + (currentUrl.hash || '');
+
+        if ((currentUrl.pathname + currentUrl.search + currentUrl.hash) === canonicalUrl) {
+          return;
+        }
+
+        window.history.replaceState({}, '', canonicalUrl);
+      } catch (error) {
+        console.warn('Unable to canonicalize category info URL', error);
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Interactive charts using UK Government data">
   <meta property="og:type" content="website">

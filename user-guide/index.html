@@ -3,6 +3,42 @@
 <head>
   <meta charset="utf-8">
   <title>Data Explorer User Guide</title>
+  <script>
+    (function canonicalizeUserGuidePath() {
+      try {
+        var currentUrl = new URL(window.location.href);
+        var segments = currentUrl.pathname.split('/').filter(Boolean);
+        if (!segments.length) {
+          return;
+        }
+
+        var lastSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (lastSegment === 'index.html') {
+          segments.pop();
+        }
+
+        var pageSegment = String(segments[segments.length - 1] || '').toLowerCase();
+        if (pageSegment !== 'user-guide') {
+          return;
+        }
+
+        var canonicalPath = '/' + segments.join('/') + '/';
+        var params = new URLSearchParams(currentUrl.search || '');
+        params.delete('page');
+        params.delete('chart');
+        var query = params.toString();
+        var canonicalUrl = canonicalPath + (query ? ('?' + query) : '') + (currentUrl.hash || '');
+
+        if ((currentUrl.pathname + currentUrl.search + currentUrl.hash) === canonicalUrl) {
+          return;
+        }
+
+        window.history.replaceState({}, '', canonicalUrl);
+      } catch (error) {
+        console.warn('Unable to canonicalize user guide URL', error);
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Embedded user guide for the UK Air Pollution/Emissions Data Explorer">
   <link rel="preconnect" href="https://fonts.googleapis.com">
