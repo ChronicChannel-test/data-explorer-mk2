@@ -42,11 +42,14 @@
   const debugEnabled = ['debug', 'debugLogs', 'analyticsDebug', 'logs']
     .some(flag => searchParams.has(flag));
   const analyticsDisabled = searchParams.get('analytics') === 'off';
+  const ANALYTICS_NETWORK_BACKOFF_MS = 180000;
   const logDebug = debugEnabled ? console.log.bind(console, '[Analytics]') : () => {};
 
   const eventQueue = [];
   let flushTimer = null;
   let pendingFlush = null;
+  let analyticsBackoffUntil = 0;
+  let analyticsBackoffNotified = false;
   let cachedRestBaseUrl = null;
   let cachedKey = null;
   const endpointCache = new Map();
@@ -102,6 +105,34 @@
       return new URLSearchParams(window.location.search || '');
     } catch (error) {
       return new URLSearchParams('');
+    }
+  }
+
+  function isHardNetworkError(error) {
+    const message = String(error?.message || error || '').toLowerCase();
+    if (!message) {
+      return false;
+    }
+    return (
+      message.includes('failed to fetch') ||
+      message.includes('networkerror') ||
+      message.includes('network request failed') ||
+      message.includes('err_name_not_resolved') ||
+      message.includes('name not resolved') ||
+      message.includes('enotfound') ||
+      message.includes('dns')
+    );
+  }
+
+  function isAnalyticsSuppressed() {
+    return analyticsDisabled || Date.now() < analyticsBackoffUntil;
+  }
+
+  function pauseAnalyticsBackoff(error) {
+    analyticsBackoffUntil = Date.now() + ANALYTICS_NETWORK_BACKOFF_MS;
+    if (!analyticsBackoffNotified) {
+      console.warn('Analytics temporarily paused after network failure:', error);
+      analyticsBackoffNotified = true;
     }
   }
 
@@ -236,7 +267,7 @@
   }
 
   function buildRecord(eventType, meta = {}) {
-    if (!eventType || analyticsDisabled) {
+    if (!eventType || isAnalyticsSuppressed()) {
       return null;
     }
     const now = new Date().toISOString();
@@ -258,7 +289,7 @@
   }
 
   function queueEvent(record) {
-    if (!record) {
+    if (!record || isAnalyticsSuppressed()) {
       return false;
     }
     if (eventQueue.length >= MAX_QUEUE_LENGTH) {
@@ -342,7 +373,7 @@
   }
 
   function flushQueue(options = {}) {
-    if (!eventQueue.length || analyticsDisabled) {
+    if (!eventQueue.length || isAnalyticsSuppressed()) {
       return Promise.resolve(false);
     }
     if (pendingFlush) {
@@ -379,6 +410,10 @@
       })
       .catch(error => {
         console.warn('Analytics flush failed:', error);
+        if (isHardNetworkError(error)) {
+          pauseAnalyticsBackoff(error);
+          return;
+        }
         // Requeue on failure (dropping oldest if needed)
         payload.forEach(record => queueEvent(record));
       })
@@ -485,7 +520,7 @@
   }
 
   function autoTrackPageDrawn() {
-    if (analyticsDisabled || window.__SITE_ANALYTICS_DISABLE_AUTO_PAGEVIEW__) {
+    if (isAnalyticsSuppressed() || window.__SITE_ANALYTICS_DISABLE_AUTO_PAGEVIEW__) {
       return;
     }
     if (autoPageDrawnSent) {
@@ -506,7 +541,7 @@
   }
 
   function handlePassiveActivityEvent() {
-    if (analyticsDisabled || document.visibilityState === 'hidden') {
+    if (isAnalyticsSuppressed() || document.visibilityState === 'hidden') {
       return;
     }
     const now = Date.now();
@@ -529,7 +564,7 @@
 
   function markUserActivity() {
     state.lastInteractionAt = Date.now();
-    if (!heartbeatEligible || analyticsDisabled || document.visibilityState === 'hidden') {
+    if (!heartbeatEligible || isAnalyticsSuppressed() || document.visibilityState === 'hidden') {
       return;
     }
     startHeartbeatLoop({ resetTimer: !heartbeatRunning });
@@ -545,7 +580,7 @@
   function shouldSendHeartbeat() {
     const hasFocus = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
     return heartbeatEligible
-      && !analyticsDisabled
+      && !isAnalyticsSuppressed()
       && document.visibilityState !== 'hidden'
       && hasFocus
       && hasRecentActivity();
@@ -560,7 +595,7 @@
       lastInteractionAt: state.lastInteractionAt,
       resolvedLabel: resolveHeartbeatLabel(),
       visibilityState: document.visibilityState,
-      analyticsDisabled,
+      analyticsDisabled: isAnalyticsSuppressed(),
       autoPageDrawnSent,
       hasRecentActivity: hasRecentActivity()
     };
@@ -641,7 +676,7 @@
       flush: flushQueue,
       getSessionId: () => state.sessionId,
       getUserCountry,
-      isEnabled: () => !analyticsDisabled
+      isEnabled: () => !isAnalyticsSuppressed()
     };
 
     window.SiteAnalytics = api;
@@ -667,6 +702,8 @@
 
   function registerLifecycleHooks() {
     window.addEventListener('online', () => {
+      analyticsBackoffUntil = 0;
+      analyticsBackoffNotified = false;
       flushQueue();
     });
     window.addEventListener('beforeunload', () => {
@@ -753,6 +790,9 @@
   }
 
   async function logSiteError(meta = {}) {
+    if (isAnalyticsSuppressed()) {
+      return false;
+    }
     const record = buildErrorRecord(meta);
     if (!record) {
       return false;
@@ -784,6 +824,9 @@
       return true;
     } catch (error) {
       console.warn('Site error logging failed:', error);
+      if (isHardNetworkError(error)) {
+        pauseAnalyticsBackoff(error);
+      }
       return false;
     }
   }

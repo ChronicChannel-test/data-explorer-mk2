@@ -88,12 +88,40 @@ const lineSupabaseWarnLog = (...args) => {
 };
 const LINE_SUPABASE_MAX_ATTEMPTS = 3;
 const LINE_SUPABASE_RETRY_DELAY_MS = 500;
+const LINE_SUPABASE_OUTAGE_BACKOFF_MS = 180000;
 const lineRetryDelay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+let lineSupabaseRetryBackoffUntil = 0;
+
+function isHardLineSupabaseNetworkError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  if (!message) {
+    return false;
+  }
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('err_name_not_resolved') ||
+    message.includes('name not resolved') ||
+    message.includes('enotfound') ||
+    message.includes('dns')
+  );
+}
+
+function isLineSupabaseBackoffActive() {
+  return Date.now() < lineSupabaseRetryBackoffUntil;
+}
 
 async function withLineSupabaseRetries(taskFn, options = {}) {
   const maxAttempts = Math.max(1, Number(options.maxAttempts) || LINE_SUPABASE_MAX_ATTEMPTS);
   const delayMs = Math.max(0, Number(options.delayMs) || LINE_SUPABASE_RETRY_DELAY_MS);
   const label = options.label || 'supabase-task';
+  if (isLineSupabaseBackoffActive()) {
+    const remainingMs = lineSupabaseRetryBackoffUntil - Date.now();
+    const backoffError = new Error(`Supabase retries paused for ${Math.ceil(remainingMs / 1000)}s`);
+    backoffError.code = 'SUPABASE_BACKOFF';
+    throw backoffError;
+  }
   let attempt = 0;
   let lastError = null;
 
@@ -105,6 +133,10 @@ async function withLineSupabaseRetries(taskFn, options = {}) {
       lastError = error;
       const message = error?.message || String(error);
       lineSupabaseInfoLog('Supabase attempt failed', { label, attempt, maxAttempts, message });
+      if (isHardLineSupabaseNetworkError(error)) {
+        lineSupabaseRetryBackoffUntil = Date.now() + LINE_SUPABASE_OUTAGE_BACKOFF_MS;
+        break;
+      }
       if (attempt < maxAttempts) {
         await lineRetryDelay(delayMs);
       }
@@ -996,6 +1028,9 @@ function triggerLineFullDatasetBootstrap(sharedLoader, reason = 'line-chart') {
   if (lineHasFullDataset) {
     return Promise.resolve({ source: 'already-hydrated' });
   }
+  if (isLineSupabaseBackoffActive()) {
+    return Promise.resolve({ source: 'supabase-backoff' });
+  }
   if (lineFullDatasetPromise) {
     return lineFullDatasetPromise;
   }
@@ -1609,4 +1644,3 @@ try {
 }
 
 })();
-

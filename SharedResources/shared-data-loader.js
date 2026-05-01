@@ -34,6 +34,7 @@ const SHARED_FAILURE_EVENT_COOLDOWN_MS = 60000;
 const SHARED_SUPABASE_MAX_ATTEMPTS = 4;
 const SHARED_SUPABASE_RETRY_DELAYS_MS = Object.freeze([500, 2500, 8000]); // Attempts 2-4 wait 0.5s, 2.5s, 8s respectively
 const SHARED_SUPABASE_RETRY_JITTER_MS = 300;
+const SHARED_SUPABASE_OUTAGE_BACKOFF_MS = 180000;
 const sharedFailureEventScopes = new Map();
 
 function normalizeSharedSlug(slug) {
@@ -96,9 +97,28 @@ function sharedDelay(ms) {
   return new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
 }
 
+function isHardSupabaseNetworkError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  if (!message) {
+    return false;
+  }
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('err_name_not_resolved') ||
+    message.includes('name not resolved') ||
+    message.includes('enotfound') ||
+    message.includes('dns')
+  );
+}
+
 function isTransientSupabaseError(error) {
   if (!error) {
     return true;
+  }
+  if (isHardSupabaseNetworkError(error)) {
+    return false;
   }
   const statusCandidates = [error.status, error.statusCode, error.HTTPStatusCode, error.code]
     .map(value => Number(value))
@@ -111,8 +131,6 @@ function isTransientSupabaseError(error) {
     return !statusCandidates.length;
   }
   return (
-    message.includes('failed to fetch') ||
-    message.includes('network') ||
     message.includes('timeout') ||
     message.includes('abort') ||
     message.includes('temporarily unavailable')
@@ -255,6 +273,7 @@ window.SharedDataCache = resolveExistingSharedCache() || {
   isLoading: false,
   fullBootstrapPromise: null,
   loadPromise: null,
+  supabaseBackoffUntil: 0,
   defaultSnapshot: null,
   snapshotData: null,
   heroCache: new Map(),
@@ -671,6 +690,14 @@ async function loadDataFromSupabase() {
   
   const client = getSupabaseClient();
   const cache = window.SharedDataCache;
+  const now = Date.now();
+  const backoffUntil = Number(cache.supabaseBackoffUntil || 0);
+  if (backoffUntil > now) {
+    const remainingMs = backoffUntil - now;
+    const backoffError = new Error(`Supabase backoff active for ${Math.ceil(remainingMs / 1000)}s`);
+    backoffError.code = 'SHARED_SUPABASE_BACKOFF';
+    throw backoffError;
+  }
   const batchStart = sharedDataNow();
 
   const timedQuery = async (label, queryFactory, options = {}) => {
@@ -697,6 +724,9 @@ async function loadDataFromSupabase() {
             source: 'shared-loader-query',
             attempt
           });
+          if (isHardSupabaseNetworkError(response.error)) {
+            cache.supabaseBackoffUntil = Date.now() + SHARED_SUPABASE_OUTAGE_BACKOFF_MS;
+          }
           const canRetry = attempt < maxAttempts && isTransientSupabaseError(response.error);
           if (canRetry) {
             await sharedDelay(getSupabaseRetryDelay(attempt));
@@ -726,6 +756,9 @@ async function loadDataFromSupabase() {
           source: 'shared-loader-query',
           attempt
         });
+        if (isHardSupabaseNetworkError(error)) {
+          cache.supabaseBackoffUntil = Date.now() + SHARED_SUPABASE_OUTAGE_BACKOFF_MS;
+        }
         const canRetry = attempt < maxAttempts && isTransientSupabaseError(error);
         if (canRetry) {
           await sharedDelay(getSupabaseRetryDelay(attempt));
@@ -758,6 +791,7 @@ async function loadDataFromSupabase() {
   // Store data in cache
   cache.data = { pollutants, categories, timeseries, nfrCodes };
   cache.snapshotData = cache.snapshotData || { pollutants, categories };
+  cache.supabaseBackoffUntil = 0;
   
   // Build lookup maps for performance
   buildLookupMaps(pollutants, categories);

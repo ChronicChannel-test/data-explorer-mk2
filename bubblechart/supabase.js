@@ -60,12 +60,40 @@ const supabaseDebugWarn = (...args) => {
 };
 const SUPABASE_MAX_ATTEMPTS = 3;
 const SUPABASE_RETRY_DELAY_MS = 500;
+const SUPABASE_OUTAGE_BACKOFF_MS = 180000;
 const bubbleRetryDelay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+let supabaseRetryBackoffUntil = 0;
+
+function isHardSupabaseNetworkError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  if (!message) {
+    return false;
+  }
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('err_name_not_resolved') ||
+    message.includes('name not resolved') ||
+    message.includes('enotfound') ||
+    message.includes('dns')
+  );
+}
+
+function isSupabaseBackoffActive() {
+  return Date.now() < supabaseRetryBackoffUntil;
+}
 
 async function withSupabaseRetries(taskFn, options = {}) {
   const maxAttempts = Math.max(1, Number(options.maxAttempts) || SUPABASE_MAX_ATTEMPTS);
   const delayMs = Math.max(0, Number(options.delayMs) || SUPABASE_RETRY_DELAY_MS);
   const label = options.label || 'supabase-task';
+  if (isSupabaseBackoffActive()) {
+    const remainingMs = supabaseRetryBackoffUntil - Date.now();
+    const backoffError = new Error(`Supabase retries paused for ${Math.ceil(remainingMs / 1000)}s`);
+    backoffError.code = 'SUPABASE_BACKOFF';
+    throw backoffError;
+  }
   let attempt = 0;
   let lastError = null;
 
@@ -77,6 +105,10 @@ async function withSupabaseRetries(taskFn, options = {}) {
       lastError = error;
       const message = error?.message || String(error);
       bubbleDataInfoLog('Supabase attempt failed', { label, attempt, maxAttempts, message });
+      if (isHardSupabaseNetworkError(error)) {
+        supabaseRetryBackoffUntil = Date.now() + SUPABASE_OUTAGE_BACKOFF_MS;
+        break;
+      }
       if (attempt < maxAttempts) {
         await bubbleRetryDelay(delayMs);
       }
@@ -1132,6 +1164,9 @@ function waitForFirstDatasetCandidate(promises = [], logError = () => {}) {
 function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart') {
   if (hasFullDataset) {
     return Promise.resolve({ source: 'already-hydrated' });
+  }
+  if (isSupabaseBackoffActive()) {
+    return Promise.resolve({ source: 'supabase-backoff' });
   }
   if (bubbleFullDatasetPromise) {
     return bubbleFullDatasetPromise;

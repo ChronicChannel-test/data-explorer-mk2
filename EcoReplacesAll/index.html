@@ -21,6 +21,21 @@
           return;
         }
 
+        var assetBasePath = '/' + segments.join('/') + '/';
+        var baseElement = document.querySelector('base');
+        if (baseElement) {
+          baseElement.setAttribute('href', assetBasePath);
+        } else {
+          baseElement = document.createElement('base');
+          baseElement.setAttribute('href', assetBasePath);
+          var firstHeadChild = document.head.firstChild;
+          if (firstHeadChild) {
+            document.head.insertBefore(baseElement, firstHeadChild);
+          } else {
+            document.head.appendChild(baseElement);
+          }
+        }
+
         segments.pop();
         var basePath = segments.length ? ('/' + segments.join('/') + '/') : '/';
         var params = new URLSearchParams(currentUrl.search || '');
